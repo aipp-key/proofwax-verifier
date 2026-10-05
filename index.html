@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Proofwax Independent Cryptographic Verifier</title>
+  <meta name="description" content="100% client-side, trustless, open-source verification tool for SHA-256 file integrity and Base L2 immutable timestamps.">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#ecfdf5',
+              500: '#10b981',
+              600: '#059669',
+              900: '#064e3b',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    .mono { font-family: 'JetBrains Mono', monospace; }
+  </style>
+</head>
+<body class="bg-neutral-950 text-neutral-100 min-h-screen flex flex-col justify-between selection:bg-emerald-500 selection:text-black">
+
+  <!-- Header -->
+  <header class="border-b border-neutral-800/80 bg-neutral-900/50 backdrop-blur-md sticky top-0 z-50">
+    <div class="max-w-5xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-9 h-9 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+          <i data-lucide="shield-check" class="w-5 h-5"></i>
+        </div>
+        <div>
+          <span class="font-bold tracking-tight text-lg text-white">Proofwax</span>
+          <span class="text-xs ml-1.5 px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-medium">Independent Verifier</span>
+        </div>
+      </div>
+      <div class="flex items-center space-x-4 text-xs text-neutral-400">
+        <span class="flex items-center gap-1.5 bg-neutral-800/60 px-2.5 py-1 rounded-full border border-neutral-700/50">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          Base L2 Mainnet
+        </span>
+        <a href="https://github.com/aipp-key/proofwax-verifier" target="_blank" class="hover:text-white transition flex items-center gap-1">
+          <i data-lucide="github" class="w-4 h-4"></i> GitHub
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="max-w-4xl mx-auto px-4 sm:px-6 py-10 flex-grow w-full">
+    
+    <!-- Hero / Intro -->
+    <div class="text-center max-w-2xl mx-auto mb-10">
+      <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-white mb-3">
+        Client-Side Trustless Verification
+      </h1>
+      <p class="text-sm text-neutral-400 leading-relaxed">
+        Verify document SHA-256 fingerprints and Base L2 immutable timestamps without relying on Proofwax servers. 
+        Your file never leaves your browser.
+      </p>
+    </div>
+
+    <!-- Step 1: File / Hash Input -->
+    <div class="bg-neutral-900/60 border border-neutral-800 rounded-2xl p-6 mb-6 shadow-xl backdrop-blur-sm">
+      <h2 class="text-sm font-semibold uppercase tracking-wider text-neutral-400 mb-4 flex items-center gap-2">
+        <span class="w-5 h-5 rounded-full bg-neutral-800 text-neutral-300 text-xs flex items-center justify-center font-bold">1</span>
+        Document Integrity (SHA-256)
+      </h2>
+
+      <div id="drop-zone" class="border-2 border-dashed border-neutral-800 hover:border-emerald-500/50 transition rounded-xl p-8 text-center cursor-pointer bg-neutral-950/40 group">
+        <input type="file" id="file-input" class="hidden">
+        <div class="w-12 h-12 mx-auto rounded-full bg-neutral-900 border border-neutral-800 group-hover:border-emerald-500/40 flex items-center justify-center text-neutral-400 group-hover:text-emerald-400 transition mb-3">
+          <i data-lucide="upload-cloud" class="w-6 h-6"></i>
+        </div>
+        <p class="text-sm font-medium text-neutral-200">
+          Drop your document here or <span class="text-emerald-400 underline decoration-emerald-500/30">browse file</span>
+        </p>
+        <p class="text-xs text-neutral-500 mt-1">Calculated locally in your browser (never uploaded anywhere)</p>
+      </div>
+
+      <div id="file-info" class="hidden mt-4 p-3.5 bg-neutral-950 rounded-xl border border-neutral-800/80 flex items-center justify-between">
+        <div class="flex items-center space-x-3 overflow-hidden">
+          <i data-lucide="file-text" class="w-5 h-5 text-emerald-400 flex-shrink-0"></i>
+          <div class="overflow-hidden">
+            <p id="file-name" class="text-sm font-medium text-white truncate"></p>
+            <p id="file-size" class="text-xs text-neutral-500"></p>
+          </div>
+        </div>
+        <button id="clear-file" class="text-xs text-neutral-400 hover:text-red-400 p-1 transition">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <div class="mt-4">
+        <label class="block text-xs font-medium text-neutral-400 mb-1.5">Or enter SHA-256 Digest Manually:</label>
+        <div class="relative">
+          <input type="text" id="hash-input" placeholder="0x... or 64 hex characters" class="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-4 py-2.5 text-xs text-neutral-200 mono focus:outline-none focus:border-emerald-500/50 transition">
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 2: Blockchain Proof -->
+    <div class="bg-neutral-900/60 border border-neutral-800 rounded-2xl p-6 mb-6 shadow-xl backdrop-blur-sm">
+      <h2 class="text-sm font-semibold uppercase tracking-wider text-neutral-400 mb-4 flex items-center gap-2">
+        <span class="w-5 h-5 rounded-full bg-neutral-800 text-neutral-300 text-xs flex items-center justify-center font-bold">2</span>
+        Base L2 Transaction / Receipt
+      </h2>
+
+      <div class="space-y-4">
+        <div>
+          <label class="block text-xs font-medium text-neutral-400 mb-1.5">Base L2 Transaction Hash (0x...):</label>
+          <input type="text" id="tx-input" placeholder="0x4d1685... (Transaction hash from receipt or certificate)" class="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-4 py-2.5 text-xs text-neutral-200 mono focus:outline-none focus:border-emerald-500/50 transition">
+        </div>
+
+        <div>
+          <label class="block text-xs font-medium text-neutral-400 mb-1.5">Base Public RPC Endpoint:</label>
+          <select id="rpc-select" class="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-4 py-2.5 text-xs text-neutral-300 focus:outline-none focus:border-emerald-500/50 transition">
+            <option value="https://mainnet.base.org">https://mainnet.base.org (Official Base RPC)</option>
+            <option value="https://base-rpc.publicnode.com">https://base-rpc.publicnode.com (PublicNode)</option>
+            <option value="https://1rpc.io/base">https://1rpc.io/base (1RPC Automata)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Action Button -->
+    <div class="mb-8 text-center">
+      <button id="verify-btn" class="bg-emerald-500 hover:bg-emerald-400 active:scale-[0.98] transition font-semibold text-neutral-950 px-8 py-3 rounded-xl text-sm inline-flex items-center gap-2 shadow-lg shadow-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed">
+        <i data-lucide="shield" class="w-4 h-4"></i>
+        Verify On-Chain Cryptographic Integrity
+      </button>
+    </div>
+
+    <!-- Verification Result Banner -->
+    <div id="result-box" class="hidden rounded-2xl p-6 border shadow-2xl transition-all">
+      <!-- Injected via JavaScript -->
+    </div>
+
+    <!-- Legal / Scope Disclaimer -->
+    <div class="mt-12 p-5 rounded-xl border border-neutral-800/80 bg-neutral-900/30 text-xs text-neutral-400 leading-relaxed">
+      <div class="flex items-start space-x-2.5">
+        <i data-lucide="info" class="w-4 h-4 text-neutral-400 flex-shrink-0 mt-0.5"></i>
+        <div>
+          <span class="font-semibold text-neutral-300">Open-Source Non-Notary Disclaimer:</span>
+          Proofwax Independent Verifier is a content-agnostic decentralized utility designed solely to mathematically verify 
+          document SHA-256 digest inclusion within public Base L2 blockchain blocks. It does NOT constitute a legal notary service, 
+          does NOT verify document legal validity or ownership, and conveys zero legal representations.
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="border-t border-neutral-800/80 py-6 text-center text-xs text-neutral-500">
+    <div class="max-w-5xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+      <p>© Proofwax Protocol — Open Source (MIT License)</p>
+      <div class="flex items-center space-x-4">
+        <a href="https://basescan.org" target="_blank" class="hover:text-neutral-300 transition">Basescan Explorer</a>
+        <a href="https://proofwax.com" target="_blank" class="hover:text-neutral-300 transition">Proofwax.com</a>
+        <a href="https://github.com/aipp-key/proofwax-verifier" target="_blank" class="hover:text-neutral-300 transition">GitHub Repository</a>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    lucide.createIcons();
+
+    const dropZone = document.getElementById('drop-zone');
+    const fileInput = document.getElementById('file-input');
+    const fileInfo = document.getElementById('file-info');
+    const fileName = document.getElementById('file-name');
+    const fileSize = document.getElementById('file-size');
+    const clearFileBtn = document.getElementById('clear-file');
+    const hashInput = document.getElementById('hash-input');
+    const txInput = document.getElementById('tx-input');
+    const rpcSelect = document.getElementById('rpc-select');
+    const verifyBtn = document.getElementById('verify-btn');
+    const resultBox = document.getElementById('result-box');
+
+    let currentFileBuffer = null;
+
+    dropZone.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', (e) => {
+      if (e.target.files.length) handleFile(e.target.files[0]);
+    });
+
+    dropZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropZone.classList.add('border-emerald-500');
+    });
+
+    dropZone.addEventListener('dragleave', () => {
+      dropZone.classList.remove('border-emerald-500');
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropZone.classList.remove('border-emerald-500');
+      if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+    });
+
+    clearFileBtn.addEventListener('click', () => {
+      fileInput.value = '';
+      currentFileBuffer = null;
+      fileInfo.classList.add('hidden');
+      dropZone.classList.remove('hidden');
+      hashInput.value = '';
+    });
+
+    async function handleFile(file) {
+      fileName.textContent = file.name;
+      fileSize.textContent = `${(file.size / (1024 * 1024)).toFixed(2)} MB (${file.size.toLocaleString()} bytes)`;
+      fileInfo.classList.remove('hidden');
+      dropZone.classList.add('hidden');
+
+      const arrayBuffer = await file.arrayBuffer();
+      const hashBuffer = await crypto.subtle.digest('SHA-256', arrayBuffer);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      const hashHex = '0x' + hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+      hashInput.value = hashHex;
+    }
+
+    async function rpcCall(method, params, rpcUrl) {
+      const res = await fetch(rpcUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params })
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
+      return data.result;
+    }
+
+    function cleanHex(h = '') {
+      const c = h.trim().toLowerCase();
+      return c.startsWith('0x') ? c.slice(2) : c;
+    }
+
+    verifyBtn.addEventListener('click', async () => {
+      const rawHash = hashInput.value.trim();
+      const rawTx = txInput.value.trim();
+      const rpcUrl = rpcSelect.value;
+
+      if (!rawHash) {
+        alert('Please select a file or enter a SHA-256 digest.');
+        return;
+      }
+      if (!rawTx) {
+        alert('Please enter a Base L2 transaction hash.');
+        return;
+      }
+
+      verifyBtn.disabled = true;
+      verifyBtn.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Querying Base L2 Blockchain...`;
+      lucide.createIcons();
+      resultBox.classList.add('hidden');
+
+      const cleanTargetHash = cleanHex(rawHash);
+      const txHash = rawTx.startsWith('0x') ? rawTx : '0x' + rawTx;
+
+      try {
+        const tx = await rpcCall('eth_getTransactionByHash', [txHash], rpcUrl);
+        if (!tx) {
+          throw new Error(`Transaction ${txHash} was not found on Base L2 blockchain.`);
+        }
+        if (!tx.blockNumber) {
+          throw new Error('Transaction is currently pending and has not been included in a block yet.');
+        }
+
+        const receipt = await rpcCall('eth_getTransactionReceipt', [txHash], rpcUrl);
+        const isSuccess = receipt?.status === '0x1' || receipt?.status === 1;
+        if (!isSuccess) {
+          throw new Error('Transaction execution was reverted on the blockchain.');
+        }
+
+        const block = await rpcCall('eth_getBlockByNumber', [tx.blockNumber, false], rpcUrl);
+        const blockNumber = parseInt(tx.blockNumber, 16);
+        const timestamp = parseInt(block.timestamp, 16);
+        const dateUtc = new Date(timestamp * 1000).toUTCString();
+        const dateLocal = new Date(timestamp * 1000).toLocaleString();
+
+        const inputData = cleanHex(tx.input || '');
+        const isMatch = inputData.includes(cleanTargetHash);
+
+        resultBox.classList.remove('hidden');
+
+        if (isMatch) {
+          resultBox.className = 'rounded-2xl p-6 border shadow-2xl bg-emerald-950/20 border-emerald-500/40 text-emerald-300';
+          resultBox.innerHTML = `
+            <div class="flex items-center space-x-3 mb-4">
+              <div class="w-10 h-10 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400">
+                <i data-lucide="check-circle" class="w-6 h-6"></i>
+              </div>
+              <div>
+                <h3 class="text-base font-bold text-emerald-200">Cryptographic Integrity Verified</h3>
+                <p class="text-xs text-emerald-400/80">Mathematical Match Confirmed on Base L2</p>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs bg-neutral-950/80 p-4 rounded-xl border border-emerald-500/20 text-neutral-300">
+              <div>
+                <span class="text-neutral-500 block">SHA-256 Digest:</span>
+                <span class="mono font-semibold text-emerald-400 break-all">0x${cleanTargetHash}</span>
+              </div>
+              <div>
+                <span class="text-neutral-500 block">Block Timestamp (UTC):</span>
+                <span class="font-semibold text-white">${dateUtc}</span>
+              </div>
+              <div>
+                <span class="text-neutral-500 block">Block Number:</span>
+                <span class="mono font-semibold text-white">#${blockNumber.toLocaleString()}</span>
+              </div>
+              <div>
+                <span class="text-neutral-500 block">Local Timestamp:</span>
+                <span class="text-neutral-300">${dateLocal}</span>
+              </div>
+              <div class="sm:col-span-2">
+                <span class="text-neutral-500 block">Target Contract / Anchor:</span>
+                <span class="mono text-xs text-neutral-300 break-all">${tx.to}</span>
+              </div>
+              <div class="sm:col-span-2 pt-2 border-t border-neutral-800 flex justify-between items-center">
+                <span class="text-neutral-400">View Public Blockchain Record:</span>
+                <a href="https://basescan.org/tx/${txHash}" target="_blank" class="text-emerald-400 hover:underline flex items-center gap-1 font-medium">
+                  Basescan Explorer <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
+                </a>
+              </div>
+            </div>
+          `;
+        } else {
+          resultBox.className = 'rounded-2xl p-6 border shadow-2xl bg-red-950/20 border-red-500/40 text-red-300';
+          resultBox.innerHTML = `
+            <div class="flex items-center space-x-3 mb-4">
+              <div class="w-10 h-10 rounded-full bg-red-500/20 border border-red-500/40 flex items-center justify-center text-red-400">
+                <i data-lucide="alert-triangle" class="w-6 h-6"></i>
+              </div>
+              <div>
+                <h3 class="text-base font-bold text-red-200">Hash Mismatch (Verification Failed)</h3>
+                <p class="text-xs text-red-400/80">The transaction exists on Base L2, but does NOT match your document's SHA-256 digest.</p>
+              </div>
+            </div>
+            <div class="text-xs bg-neutral-950/80 p-4 rounded-xl border border-red-500/20 space-y-2 mono">
+              <div><span class="text-neutral-500">Provided File Hash:</span> 0x${cleanTargetHash}</div>
+              <div><span class="text-neutral-500">Transaction Input: </span> 0x${inputData.slice(0, 64)}...</div>
+            </div>
+          `;
+        }
+      } catch (err) {
+        resultBox.classList.remove('hidden');
+        resultBox.className = 'rounded-2xl p-6 border shadow-2xl bg-amber-950/20 border-amber-500/40 text-amber-300';
+        resultBox.innerHTML = `
+          <div class="flex items-center space-x-3">
+            <i data-lucide="alert-circle" class="w-6 h-6 text-amber-400 flex-shrink-0"></i>
+            <div>
+              <h3 class="text-sm font-bold text-amber-200">Verification Error</h3>
+              <p class="text-xs text-amber-400/90 mt-1">${err.message}</p>
+            </div>
+          </div>
+        `;
+      } finally {
+        verifyBtn.disabled = false;
+        verifyBtn.innerHTML = `<i data-lucide="shield" class="w-4 h-4"></i> Verify On-Chain Cryptographic Integrity`;
+        lucide.createIcons();
+      }
+    });
+  </script>
+</body>
+</html>
