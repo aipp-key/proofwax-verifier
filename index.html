@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,127 +7,136 @@
   <meta name="description" content="100% client-side, trustless, open-source verification tool for SHA-256 file integrity and Base L2 immutable timestamps.">
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
-  <script>
-    tailwind.config = {
-      darkMode: 'class',
-      theme: {
-        extend: {
-          colors: {
-            brand: {
-              50: '#ecfdf5',
-              500: '#10b981',
-              600: '#059669',
-              900: '#064e3b',
-            }
-          }
-        }
-      }
-    }
-  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap" rel="stylesheet">
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
-    body { font-family: 'Plus Jakarta Sans', sans-serif; }
-    .mono { font-family: 'JetBrains Mono', monospace; }
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background-color: #FFDE00;
+      color: #111111;
+    }
+    .font-serif {
+      font-family: 'Playfair Display', Georgia, serif;
+    }
+    .font-mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .shadow-press {
+      box-shadow: 4px 4px 0 0 #111111;
+    }
+    .shadow-press-sm {
+      box-shadow: 2px 2px 0 0 #111111;
+    }
+    .shadow-press-lg {
+      box-shadow: 6px 6px 0 0 #111111;
+    }
+    .btn-press:active {
+      transform: translate(2px, 2px);
+      box-shadow: 2px 2px 0 0 #111111;
+    }
   </style>
 </head>
-<body class="bg-neutral-950 text-neutral-100 min-h-screen flex flex-col justify-between selection:bg-emerald-500 selection:text-black">
+<body class="min-h-screen flex flex-col justify-between selection:bg-[#16307A] selection:text-[#FFFDF5]">
 
-  <!-- Header -->
-  <header class="border-b border-neutral-800/80 bg-neutral-900/50 backdrop-blur-md sticky top-0 z-50">
-    <div class="max-w-5xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
+  <!-- Top Bar / Navigation -->
+  <header class="border-b-2 border-[#111111] bg-[#FFFDF5] sticky top-0 z-50">
+    <div class="max-w-5xl mx-auto px-4 sm:px-6 py-3.5 flex items-center justify-between">
       <div class="flex items-center space-x-3">
-        <div class="w-9 h-9 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
-          <i data-lucide="shield-check" class="w-5 h-5"></i>
-        </div>
-        <div>
-          <span class="font-bold tracking-tight text-lg text-white">Proofwax</span>
-          <span class="text-xs ml-1.5 px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-medium">Independent Verifier</span>
-        </div>
+        <a href="https://proofwax.com" class="flex items-center space-x-2.5 group">
+          <div class="w-8 h-8 rounded bg-[#16307A] text-[#FFFDF5] flex items-center justify-center font-bold text-sm shadow-press-sm">
+            PW
+          </div>
+          <span class="font-serif font-bold text-xl tracking-tight text-[#111111]">Proofwax</span>
+        </a>
+        <span class="text-[11px] uppercase tracking-wider font-bold px-2 py-0.5 rounded bg-[#FFDE00] text-[#111111] border border-[#111111]">
+          Independent Verifier
+        </span>
       </div>
-      <div class="flex items-center space-x-4 text-xs text-neutral-400">
-        <span class="flex items-center gap-1.5 bg-neutral-800/60 px-2.5 py-1 rounded-full border border-neutral-700/50">
-          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+      <div class="flex items-center space-x-4 text-xs font-medium">
+        <span class="hidden sm:inline-flex items-center gap-1.5 bg-[#F2EFE2] px-3 py-1 rounded border border-[#111111]/30">
+          <span class="w-2 h-2 rounded-full bg-emerald-600 animate-pulse"></span>
           Base L2 Mainnet
         </span>
-        <a href="https://github.com/aipp-key/proofwax-verifier" target="_blank" class="hover:text-white transition flex items-center gap-1">
+        <a href="https://github.com/aipp-key/proofwax-verifier" target="_blank" class="hover:text-[#16307A] transition flex items-center gap-1.5 underline decoration-[#111111]/30">
           <i data-lucide="github" class="w-4 h-4"></i> GitHub
         </a>
       </div>
     </div>
   </header>
 
-  <!-- Main Content -->
-  <main class="max-w-4xl mx-auto px-4 sm:px-6 py-10 flex-grow w-full">
+  <!-- Main Content Container -->
+  <main class="max-w-3xl mx-auto px-4 sm:px-6 py-10 flex-grow w-full">
     
     <!-- Hero / Intro -->
-    <div class="text-center max-w-2xl mx-auto mb-10">
-      <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-white mb-3">
-        Client-Side Trustless Verification
+    <div class="text-center mb-8">
+      <h1 class="font-serif text-3xl sm:text-4xl font-bold tracking-tight text-[#111111] mb-2">
+        Independent Cryptographic Verifier
       </h1>
-      <p class="text-sm text-neutral-400 leading-relaxed">
-        Verify document SHA-256 fingerprints and Base L2 immutable timestamps without relying on Proofwax servers. 
-        Your file never leaves your browser.
+      <p class="text-sm text-[#5C5A52] max-w-xl mx-auto leading-relaxed">
+        100% client-side verification. Inspect SHA-256 fingerprints and Base L2 immutable timestamps directly from public blockchain nodes without relying on Proofwax servers.
       </p>
     </div>
 
     <!-- Step 1: File / Receipt / Hash Input -->
-    <div class="bg-neutral-900/60 border border-neutral-800 rounded-2xl p-6 mb-6 shadow-xl backdrop-blur-sm">
-      <h2 class="text-sm font-semibold uppercase tracking-wider text-neutral-400 mb-4 flex items-center gap-2">
-        <span class="w-5 h-5 rounded-full bg-neutral-800 text-neutral-300 text-xs flex items-center justify-center font-bold">1</span>
-        Document Integrity (SHA-256) or Receipt JSON
-      </h2>
-
-      <div id="drop-zone" class="border-2 border-dashed border-neutral-800 hover:border-emerald-500/50 transition rounded-xl p-8 text-center cursor-pointer bg-neutral-950/40 group">
-        <input type="file" id="file-input" class="hidden">
-        <div class="w-12 h-12 mx-auto rounded-full bg-neutral-900 border border-neutral-800 group-hover:border-emerald-500/40 flex items-center justify-center text-neutral-400 group-hover:text-emerald-400 transition mb-3">
-          <i data-lucide="upload-cloud" class="w-6 h-6"></i>
-        </div>
-        <p class="text-sm font-medium text-neutral-200">
-          Drop your document or <span class="text-emerald-400 font-semibold">receipt JSON</span> here or <span class="text-emerald-400 underline decoration-emerald-500/30">browse</span>
-        </p>
-        <p class="text-xs text-neutral-500 mt-1">Calculated locally in your browser (never uploaded anywhere)</p>
+    <div class="bg-[#FFFDF5] border-2 border-[#111111] rounded-lg p-6 mb-6 shadow-press">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-xs uppercase tracking-wider font-bold text-[#111111] flex items-center gap-2">
+          <span class="w-5 h-5 rounded-full bg-[#16307A] text-[#FFFDF5] text-xs flex items-center justify-center font-bold">1</span>
+          Document Integrity (SHA-256) or Receipt JSON
+        </h2>
+        <span class="text-[11px] text-[#5C5A52]">Calculated locally in browser</span>
       </div>
 
-      <div id="file-info" class="hidden mt-4 p-3.5 bg-neutral-950 rounded-xl border border-neutral-800/80 flex items-center justify-between">
+      <div id="drop-zone" class="border-2 border-dashed border-[#111111]/40 hover:border-[#16307A] transition rounded-lg p-8 text-center cursor-pointer bg-[#F6F3E6]/60 group">
+        <input type="file" id="file-input" class="hidden">
+        <div class="w-12 h-12 mx-auto rounded-full bg-[#FFFDF5] border border-[#111111] group-hover:bg-[#FFDE00] flex items-center justify-center text-[#111111] transition mb-3 shadow-press-sm">
+          <i data-lucide="upload-cloud" class="w-6 h-6"></i>
+        </div>
+        <p class="text-sm font-semibold text-[#111111]">
+          Drop your document or <span class="text-[#16307A] underline">receipt JSON</span> here
+        </p>
+        <p class="text-xs text-[#5C5A52] mt-1">Files never leave your device. Only SHA-256 digest is computed.</p>
+      </div>
+
+      <div id="file-info" class="hidden mt-4 p-3.5 bg-[#F2EFE2] rounded border border-[#111111] flex items-center justify-between">
         <div class="flex items-center space-x-3 overflow-hidden">
-          <i data-lucide="file-check" class="w-5 h-5 text-emerald-400 flex-shrink-0"></i>
+          <i data-lucide="file-check" class="w-5 h-5 text-[#16307A] flex-shrink-0"></i>
           <div class="overflow-hidden">
-            <p id="file-name" class="text-sm font-medium text-white truncate"></p>
-            <p id="file-size" class="text-xs text-neutral-500"></p>
+            <p id="file-name" class="text-xs font-bold text-[#111111] truncate"></p>
+            <p id="file-size" class="text-[11px] text-[#5C5A52]"></p>
           </div>
         </div>
-        <button id="clear-file" class="text-xs text-neutral-400 hover:text-red-400 p-1 transition">
-          <i data-lucide="x" class="w-4 h-4"></i>
+        <button id="clear-file" class="text-xs text-[#8C1C13] hover:underline font-bold px-2 py-1">
+          Remove
         </button>
       </div>
 
       <div class="mt-4">
-        <label class="block text-xs font-medium text-neutral-400 mb-1.5">SHA-256 Digest (Calculated or Entered):</label>
-        <div class="relative">
-          <input type="text" id="hash-input" placeholder="0x... or 64 hex characters" class="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-4 py-2.5 text-xs text-neutral-200 mono focus:outline-none focus:border-emerald-500/50 transition">
-        </div>
+        <label class="block text-xs font-bold text-[#111111] mb-1">SHA-256 Digest (Calculated or Entered):</label>
+        <input type="text" id="hash-input" placeholder="0x... (64 hex characters)" class="w-full bg-[#FFFDF5] border border-[#111111] rounded px-3.5 py-2 text-xs text-[#111111] font-mono focus:outline-none focus:ring-2 focus:ring-[#16307A] transition">
       </div>
     </div>
 
     <!-- Step 2: Blockchain Proof -->
-    <div class="bg-neutral-900/60 border border-neutral-800 rounded-2xl p-6 mb-6 shadow-xl backdrop-blur-sm">
-      <h2 class="text-sm font-semibold uppercase tracking-wider text-neutral-400 mb-4 flex items-center gap-2">
-        <span class="w-5 h-5 rounded-full bg-neutral-800 text-neutral-300 text-xs flex items-center justify-center font-bold">2</span>
-        Base L2 Transaction Proof
-      </h2>
+    <div class="bg-[#FFFDF5] border-2 border-[#111111] rounded-lg p-6 mb-6 shadow-press">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-xs uppercase tracking-wider font-bold text-[#111111] flex items-center gap-2">
+          <span class="w-5 h-5 rounded-full bg-[#16307A] text-[#FFFDF5] text-xs flex items-center justify-center font-bold">2</span>
+          Base L2 Transaction Proof
+        </h2>
+        <span class="text-[11px] text-[#5C5A52]">Public Blockchain RPC</span>
+      </div>
 
       <div class="space-y-4">
         <div>
-          <div class="flex items-center justify-between mb-1.5">
-            <label class="block text-xs font-medium text-neutral-400">Base L2 Transaction Hash (0x...):</label>
-            <span class="text-[11px] text-neutral-500">From PDF certificate, receipt JSON, or Dashboard</span>
-          </div>
-          <input type="text" id="tx-input" placeholder="0x4d1685... (Transaction hash from certificate or receipt)" class="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-4 py-2.5 text-xs text-neutral-200 mono focus:outline-none focus:border-emerald-500/50 transition">
+          <label class="block text-xs font-bold text-[#111111] mb-1">Base L2 Transaction Hash (0x...):</label>
+          <input type="text" id="tx-input" placeholder="0x4d1685... (From PDF certificate, receipt JSON, or Dashboard)" class="w-full bg-[#FFFDF5] border border-[#111111] rounded px-3.5 py-2 text-xs text-[#111111] font-mono focus:outline-none focus:ring-2 focus:ring-[#16307A] transition">
         </div>
 
         <div>
-          <label class="block text-xs font-medium text-neutral-400 mb-1.5">Base Public RPC Node:</label>
-          <select id="rpc-select" class="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-4 py-2.5 text-xs text-neutral-300 focus:outline-none focus:border-emerald-500/50 transition">
+          <label class="block text-xs font-bold text-[#111111] mb-1">Public RPC Endpoint:</label>
+          <select id="rpc-select" class="w-full bg-[#FFFDF5] border border-[#111111] rounded px-3.5 py-2 text-xs text-[#111111] focus:outline-none focus:ring-2 focus:ring-[#16307A] transition">
             <option value="https://mainnet.base.org">https://mainnet.base.org (Official Base RPC)</option>
             <option value="https://base-rpc.publicnode.com">https://base-rpc.publicnode.com (PublicNode)</option>
             <option value="https://1rpc.io/base">https://1rpc.io/base (1RPC Automata)</option>
@@ -138,24 +147,24 @@
 
     <!-- Action Button -->
     <div class="mb-8 text-center">
-      <button id="verify-btn" class="bg-emerald-500 hover:bg-emerald-400 active:scale-[0.98] transition font-semibold text-neutral-950 px-8 py-3 rounded-xl text-sm inline-flex items-center gap-2 shadow-lg shadow-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer">
-        <i data-lucide="shield" class="w-4 h-4"></i>
+      <button id="verify-btn" class="bg-[#16307A] hover:bg-[#0E2159] text-[#FFFDF5] font-bold px-8 py-3.5 rounded border-2 border-[#111111] shadow-press btn-press text-sm inline-flex items-center gap-2 cursor-pointer transition">
+        <i data-lucide="shield-check" class="w-4 h-4"></i>
         Verify On-Chain Cryptographic Integrity
       </button>
     </div>
 
     <!-- Verification Result Banner -->
-    <div id="result-box" class="hidden rounded-2xl p-6 border shadow-2xl transition-all">
+    <div id="result-box" class="hidden rounded-lg p-6 border-2 border-[#111111] shadow-press mb-8 transition-all">
       <!-- Injected via JavaScript -->
     </div>
 
     <!-- Legal / Scope Disclaimer -->
-    <div class="mt-12 p-5 rounded-xl border border-neutral-800/80 bg-neutral-900/30 text-xs text-neutral-400 leading-relaxed">
+    <div class="p-5 rounded-lg border-2 border-[#111111]/30 bg-[#FFFDF5]/80 text-xs text-[#5C5A52] leading-relaxed">
       <div class="flex items-start space-x-2.5">
-        <i data-lucide="info" class="w-4 h-4 text-neutral-400 flex-shrink-0 mt-0.5"></i>
+        <i data-lucide="info" class="w-4 h-4 text-[#111111] flex-shrink-0 mt-0.5"></i>
         <div>
-          <span class="font-semibold text-neutral-300">Open-Source Non-Notary Disclaimer:</span>
-          Proofwax Independent Verifier is a content-agnostic decentralized utility designed solely to mathematically verify 
+          <span class="font-bold text-[#111111]">Open-Source Non-Notary Disclaimer:</span>
+          Proofwax Independent Verifier is a content-agnostic decentralized tool designed solely to mathematically verify 
           document SHA-256 digest inclusion within public Base L2 blockchain blocks. It does NOT constitute a legal notary service, 
           does NOT verify document legal validity or ownership, and conveys zero legal representations.
         </div>
@@ -165,13 +174,13 @@
   </main>
 
   <!-- Footer -->
-  <footer class="border-t border-neutral-800/80 py-6 text-center text-xs text-neutral-500">
+  <footer class="border-t-2 border-[#111111] bg-[#FFFDF5] py-5 text-center text-xs text-[#5C5A52]">
     <div class="max-w-5xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
       <p>© Proofwax Protocol — Open Source (MIT License)</p>
-      <div class="flex items-center space-x-4">
-        <a href="https://basescan.org" target="_blank" class="hover:text-neutral-300 transition">Basescan Explorer</a>
-        <a href="https://proofwax.com" target="_blank" class="hover:text-neutral-300 transition">Proofwax.com</a>
-        <a href="https://github.com/aipp-key/proofwax-verifier" target="_blank" class="hover:text-neutral-300 transition">GitHub Repository</a>
+      <div class="flex items-center space-x-4 font-semibold text-[#111111]">
+        <a href="https://basescan.org" target="_blank" class="hover:text-[#16307A] underline decoration-[#111111]/30">Basescan Explorer</a>
+        <a href="https://proofwax.com" target="_blank" class="hover:text-[#16307A] underline decoration-[#111111]/30">Proofwax.com</a>
+        <a href="https://github.com/aipp-key/proofwax-verifier" target="_blank" class="hover:text-[#16307A] underline decoration-[#111111]/30">GitHub Repository</a>
       </div>
     </div>
   </footer>
@@ -198,16 +207,16 @@
 
     dropZone.addEventListener('dragover', (e) => {
       e.preventDefault();
-      dropZone.classList.add('border-emerald-500');
+      dropZone.classList.add('border-[#16307A]', 'bg-[#FFDE00]/40');
     });
 
     dropZone.addEventListener('dragleave', () => {
-      dropZone.classList.remove('border-emerald-500');
+      dropZone.classList.remove('border-[#16307A]', 'bg-[#FFDE00]/40');
     });
 
     dropZone.addEventListener('drop', (e) => {
       e.preventDefault();
-      dropZone.classList.remove('border-emerald-500');
+      dropZone.classList.remove('border-[#16307A]', 'bg-[#FFDE00]/40');
       if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
     });
 
@@ -281,19 +290,20 @@
       // Require TX Hash for direct trustless RPC verification
       if (!rawTx) {
         resultBox.classList.remove('hidden');
-        resultBox.className = 'rounded-2xl p-6 border shadow-2xl bg-amber-950/20 border-amber-500/40 text-amber-300';
+        resultBox.className = 'rounded-lg p-6 border-2 border-[#111111] shadow-press bg-[#FFFDF5] text-[#111111]';
         resultBox.innerHTML = `
-          <div class="flex items-start space-x-3">
-            <i data-lucide="help-circle" class="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5"></i>
-            <div class="space-y-2 text-xs">
-              <h3 class="text-sm font-bold text-amber-200">Base L2 Transaction Hash Required</h3>
-              <p class="text-neutral-300 leading-relaxed">
-                To independently verify this file without relying on Proofwax index servers, public Base L2 blockchain nodes require the <strong>Transaction Hash (0x...)</strong>.
+          <div class="flex items-start space-x-3.5">
+            <div class="w-8 h-8 rounded-full bg-[#FFDE00] border border-[#111111] flex items-center justify-center flex-shrink-0 font-bold">
+              ?
+            </div>
+            <div class="space-y-3 text-xs">
+              <h3 class="font-serif text-base font-bold text-[#111111]">Base L2 Transaction Hash Required</h3>
+              <p class="text-[#5C5A52] leading-relaxed">
+                To independently verify this file directly against public Base L2 blockchain nodes, please enter the <strong>Transaction Hash (0x...)</strong>.
               </p>
-              <div class="bg-neutral-950/80 p-3 rounded-lg border border-neutral-800 space-y-1 text-neutral-400">
-                <p>• Check your <strong>Proofwax PDF Certificate</strong> or <strong>receipt.json</strong>.</p>
-                <p>• Or log in to your <a href="https://proofwax.com/dashboard" target="_blank" class="text-emerald-400 underline font-semibold">Proofwax Dashboard</a> to copy the TX Hash.</p>
-                <p>• Or verify automatically on <a href="https://proofwax.com/verify" target="_blank" class="text-emerald-400 underline font-semibold">proofwax.com/verify</a>.</p>
+              <div class="bg-[#F2EFE2] p-4 rounded border border-[#111111]/30 space-y-2 text-[#111111]">
+                <p>• <strong>Check your Certificate or Receipt:</strong> The TX code is printed on your Proofwax PDF certificate and in <code class="font-mono bg-[#FFFDF5] px-1 py-0.5 rounded border border-[#111111]/20">receipt.json</code>.</p>
+                <p>• <strong>Look up on Proofwax:</strong> Log in to your <a href="https://proofwax.com/dashboard" target="_blank" class="text-[#16307A] font-bold underline">Dashboard</a> or drop your file at <a href="https://proofwax.com/verify" target="_blank" class="text-[#16307A] font-bold underline">proofwax.com/verify</a> to find your TX code automatically.</p>
               </div>
             </div>
           </div>
@@ -337,80 +347,80 @@
         resultBox.classList.remove('hidden');
 
         if (isMatch) {
-          resultBox.className = 'rounded-2xl p-6 border shadow-2xl bg-emerald-950/20 border-emerald-500/40 text-emerald-300';
+          resultBox.className = 'rounded-lg p-6 border-2 border-[#111111] shadow-press bg-[#FFFDF5] text-[#111111]';
           resultBox.innerHTML = `
-            <div class="flex items-center space-x-3 mb-4">
-              <div class="w-10 h-10 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400">
-                <i data-lucide="check-circle" class="w-6 h-6"></i>
+            <div class="flex items-center space-x-3 mb-4 pb-3 border-b border-[#111111]/20">
+              <div class="w-9 h-9 rounded-full bg-emerald-100 border-2 border-emerald-700 flex items-center justify-center text-emerald-800 font-bold">
+                <i data-lucide="check" class="w-5 h-5"></i>
               </div>
               <div>
-                <h3 class="text-base font-bold text-emerald-200">Cryptographic Integrity Verified</h3>
-                <p class="text-xs text-emerald-400/80">Mathematical Match Confirmed on Base L2</p>
+                <h3 class="font-serif text-lg font-bold text-[#111111]">Cryptographic Integrity Verified</h3>
+                <p class="text-xs text-emerald-800 font-semibold">Exact SHA-256 Digest Confirmed on Base L2 Blockchain</p>
               </div>
             </div>
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs bg-neutral-950/80 p-4 rounded-xl border border-emerald-500/20 text-neutral-300">
-              <div>
-                <span class="text-neutral-500 block">SHA-256 Digest:</span>
-                <span class="mono font-semibold text-emerald-400 break-all">0x${cleanTargetHash}</span>
-              </div>
-              <div>
-                <span class="text-neutral-500 block">Block Timestamp (UTC):</span>
-                <span class="font-semibold text-white">${dateUtc}</span>
-              </div>
-              <div>
-                <span class="text-neutral-500 block">Block Number:</span>
-                <span class="mono font-semibold text-white">#${blockNumber.toLocaleString()}</span>
-              </div>
-              <div>
-                <span class="text-neutral-500 block">Local Timestamp:</span>
-                <span class="text-neutral-300">${dateLocal}</span>
-              </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-xs bg-[#F6F3E6] p-4 rounded border border-[#111111]/30">
               <div class="sm:col-span-2">
-                <span class="text-neutral-500 block">Smart Contract / Anchor:</span>
-                <span class="mono text-xs text-neutral-300 break-all">${tx.to}</span>
+                <span class="text-[#5C5A52] font-semibold block mb-0.5">SHA-256 Digest:</span>
+                <span class="font-mono font-bold text-[#16307A] break-all bg-[#FFFDF5] p-2 rounded border border-[#111111]/20 block">0x${cleanTargetHash}</span>
               </div>
-              <div class="sm:col-span-2 pt-2 border-t border-neutral-800 flex justify-between items-center">
-                <span class="text-neutral-400">View Public Blockchain Record:</span>
-                <a href="https://basescan.org/tx/${formattedTxHash}" target="_blank" class="text-emerald-400 hover:underline flex items-center gap-1 font-medium">
-                  Basescan Explorer <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
+              <div>
+                <span class="text-[#5C5A52] font-semibold block">Block Timestamp (UTC):</span>
+                <span class="font-bold text-[#111111]">${dateUtc}</span>
+              </div>
+              <div>
+                <span class="text-[#5C5A52] font-semibold block">Local Timestamp:</span>
+                <span class="font-medium text-[#111111]">${dateLocal}</span>
+              </div>
+              <div>
+                <span class="text-[#5C5A52] font-semibold block">Block Number:</span>
+                <span class="font-mono font-bold text-[#111111]">#${blockNumber.toLocaleString()}</span>
+              </div>
+              <div>
+                <span class="text-[#5C5A52] font-semibold block">Target Contract:</span>
+                <span class="font-mono text-[11px] text-[#5C5A52] truncate block">${tx.to}</span>
+              </div>
+              <div class="sm:col-span-2 pt-3 border-t border-[#111111]/20 flex justify-between items-center">
+                <span class="text-xs text-[#5C5A52]">Public On-Chain Record:</span>
+                <a href="https://basescan.org/tx/${formattedTxHash}" target="_blank" class="bg-[#16307A] text-[#FFFDF5] px-3.5 py-1.5 rounded font-bold hover:bg-[#0E2159] transition flex items-center gap-1.5 shadow-press-sm text-xs">
+                  View on Basescan <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
                 </a>
               </div>
             </div>
           `;
         } else {
-          resultBox.className = 'rounded-2xl p-6 border shadow-2xl bg-red-950/20 border-red-500/40 text-red-300';
+          resultBox.className = 'rounded-lg p-6 border-2 border-[#8C1C13] shadow-press bg-[#FFFDF5] text-[#111111]';
           resultBox.innerHTML = `
             <div class="flex items-center space-x-3 mb-4">
-              <div class="w-10 h-10 rounded-full bg-red-500/20 border border-red-500/40 flex items-center justify-center text-red-400">
-                <i data-lucide="alert-triangle" class="w-6 h-6"></i>
+              <div class="w-9 h-9 rounded-full bg-red-100 border-2 border-[#8C1C13] flex items-center justify-center text-[#8C1C13] font-bold">
+                <i data-lucide="alert-triangle" class="w-5 h-5"></i>
               </div>
               <div>
-                <h3 class="text-base font-bold text-red-200">Hash Mismatch (Verification Failed)</h3>
-                <p class="text-xs text-red-400/80">The transaction exists on Base L2, but does NOT match your document's SHA-256 digest.</p>
+                <h3 class="font-serif text-lg font-bold text-[#8C1C13]">Hash Mismatch (Verification Failed)</h3>
+                <p class="text-xs text-[#5C5A52]">The transaction exists on Base L2, but its input calldata does NOT match this document's SHA-256 digest.</p>
               </div>
             </div>
-            <div class="text-xs bg-neutral-950/80 p-4 rounded-xl border border-red-500/20 space-y-2 mono">
-              <div><span class="text-neutral-500">Provided File Hash:</span> 0x${cleanTargetHash}</div>
-              <div><span class="text-neutral-500">Transaction Input: </span> 0x${inputData.slice(0, 64)}...</div>
+            <div class="text-xs bg-[#F2EFE2] p-4 rounded border border-[#111111]/30 space-y-2 font-mono">
+              <div><span class="text-[#5C5A52]">Provided File Hash:</span> 0x${cleanTargetHash}</div>
+              <div><span class="text-[#5C5A52]">Transaction Input: </span> 0x${inputData.slice(0, 64)}...</div>
             </div>
           `;
         }
       } catch (err) {
         resultBox.classList.remove('hidden');
-        resultBox.className = 'rounded-2xl p-6 border shadow-2xl bg-amber-950/20 border-amber-500/40 text-amber-300';
+        resultBox.className = 'rounded-lg p-6 border-2 border-[#8C1C13] shadow-press bg-[#FFFDF5] text-[#111111]';
         resultBox.innerHTML = `
-          <div class="flex items-center space-x-3">
-            <i data-lucide="alert-circle" class="w-6 h-6 text-amber-400 flex-shrink-0"></i>
+          <div class="flex items-start space-x-3">
+            <i data-lucide="alert-circle" class="w-5 h-5 text-[#8C1C13] flex-shrink-0 mt-0.5"></i>
             <div>
-              <h3 class="text-sm font-bold text-amber-200">Verification Result</h3>
-              <p class="text-xs text-amber-400/90 mt-1">${err.message}</p>
+              <h3 class="font-serif text-base font-bold text-[#8C1C13]">Verification Error</h3>
+              <p class="text-xs text-[#5C5A52] mt-1">${err.message}</p>
             </div>
           </div>
         `;
       } finally {
         verifyBtn.disabled = false;
-        verifyBtn.innerHTML = `<i data-lucide="shield" class="w-4 h-4"></i> Verify On-Chain Cryptographic Integrity`;
+        verifyBtn.innerHTML = `<i data-lucide="shield-check" class="w-4 h-4"></i> Verify On-Chain Cryptographic Integrity`;
         lucide.createIcons();
       }
     });
