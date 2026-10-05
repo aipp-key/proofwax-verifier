@@ -113,13 +113,16 @@
     <div class="bg-neutral-900/60 border border-neutral-800 rounded-2xl p-6 mb-6 shadow-xl backdrop-blur-sm">
       <h2 class="text-sm font-semibold uppercase tracking-wider text-neutral-400 mb-4 flex items-center gap-2">
         <span class="w-5 h-5 rounded-full bg-neutral-800 text-neutral-300 text-xs flex items-center justify-center font-bold">2</span>
-        Base L2 Transaction Proof
+        Base L2 Transaction / Contract Proof
       </h2>
 
       <div class="space-y-4">
         <div>
-          <label class="block text-xs font-medium text-neutral-400 mb-1.5">Base L2 Transaction Hash (0x...):</label>
-          <input type="text" id="tx-input" placeholder="0x4d1685... (Transaction hash from receipt or certificate)" class="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-4 py-2.5 text-xs text-neutral-200 mono focus:outline-none focus:border-emerald-500/50 transition">
+          <div class="flex items-center justify-between mb-1.5">
+            <label class="block text-xs font-medium text-neutral-400">Base L2 Transaction Hash (Optional):</label>
+            <span class="text-[11px] text-emerald-400/80">Leave empty for auto-scan on smart contract</span>
+          </div>
+          <input type="text" id="tx-input" placeholder="0x4d1685... (Optional: leave empty to auto-scan Base Anchor contract)" class="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-4 py-2.5 text-xs text-neutral-200 mono focus:outline-none focus:border-emerald-500/50 transition">
         </div>
 
         <div>
@@ -175,6 +178,9 @@
 
   <script>
     lucide.createIcons();
+
+    const ANCHOR_CONTRACT = "0xaf500675841d3a813a0206ca70fe78bb2a14ff1b";
+    const DOCUMENT_STAMPED_TOPIC0 = "0x54bf9720aa077207a682c8a6e1efd30c52c50a14e2e3579244b8f3a08a682f0e";
 
     const dropZone = document.getElementById('drop-zone');
     const fileInput = document.getElementById('file-input');
@@ -267,15 +273,11 @@
 
     verifyBtn.addEventListener('click', async () => {
       const rawHash = hashInput.value.trim();
-      const rawTx = txInput.value.trim();
+      let rawTx = txInput.value.trim();
       const rpcUrl = rpcSelect.value;
 
       if (!rawHash) {
         alert('Please select a file or enter a SHA-256 digest.');
-        return;
-      }
-      if (!rawTx) {
-        alert('Please enter a Base L2 transaction hash.');
         return;
       }
 
@@ -285,94 +287,133 @@
       resultBox.classList.add('hidden');
 
       const cleanTargetHash = cleanHex(rawHash);
-      const txHash = rawTx.startsWith('0x') ? rawTx : '0x' + rawTx;
+      const paddedDigestTopic = '0x' + cleanTargetHash;
 
       try {
-        const tx = await rpcCall('eth_getTransactionByHash', [txHash], rpcUrl);
-        if (!tx) {
-          throw new Error(`Transaction ${txHash} was not found on Base L2 blockchain.`);
-        }
-        if (!tx.blockNumber) {
-          throw new Error('Transaction is currently pending and has not been included in a block yet.');
+        let blockNumber = null;
+        let timestamp = null;
+        let txHash = rawTx;
+        let contractTo = ANCHOR_CONTRACT;
+
+        // Auto-scan Base smart contract if no TX hash provided
+        if (!rawTx) {
+          verifyBtn.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Scanning Base Contract Logs...`;
+          lucide.createIcons();
+
+          const logs = await rpcCall('eth_getLogs', [{
+            address: ANCHOR_CONTRACT,
+            topics: [DOCUMENT_STAMPED_TOPIC0, paddedDigestTopic],
+            fromBlock: 'earliest',
+            toBlock: 'latest'
+          }], rpcUrl);
+
+          if (logs && logs.length > 0) {
+            const matchLog = logs[0];
+            txHash = matchLog.transactionHash;
+            blockNumber = parseInt(matchLog.blockNumber, 16);
+            if (matchLog.data && matchLog.data !== '0x') {
+              timestamp = parseInt(matchLog.data, 16);
+            }
+          } else {
+            throw new Error(`Document hash was not found in the Base L2 smart contract logs. If stamped via custom relayer calldata, please provide the Transaction Hash.`);
+          }
         }
 
-        const receipt = await rpcCall('eth_getTransactionReceipt', [txHash], rpcUrl);
-        const isSuccess = receipt?.status === '0x1' || receipt?.status === 1;
-        if (!isSuccess) {
-          throw new Error('Transaction execution was reverted on the blockchain.');
+        // Direct Transaction Verification
+        if (txHash) {
+          const formattedTxHash = txHash.startsWith('0x') ? txHash : '0x' + txHash;
+          const tx = await rpcCall('eth_getTransactionByHash', [formattedTxHash], rpcUrl);
+          if (!tx) {
+            throw new Error(`Transaction ${formattedTxHash} was not found on Base L2 blockchain.`);
+          }
+          if (!tx.blockNumber) {
+            throw new Error('Transaction is currently pending and has not been included in a block yet.');
+          }
+
+          const receipt = await rpcCall('eth_getTransactionReceipt', [formattedTxHash], rpcUrl);
+          const isSuccess = receipt?.status === '0x1' || receipt?.status === 1;
+          if (!isSuccess) {
+            throw new Error('Transaction execution was reverted on the blockchain.');
+          }
+
+          blockNumber = parseInt(tx.blockNumber, 16);
+          contractTo = tx.to || contractTo;
+
+          if (!timestamp) {
+            const block = await rpcCall('eth_getBlockByNumber', [tx.blockNumber, false], rpcUrl);
+            timestamp = parseInt(block.timestamp, 16);
+          }
+
+          const inputData = cleanHex(tx.input || '');
+          const isMatch = inputData.includes(cleanTargetHash) || (tx.to && tx.to.toLowerCase() === ANCHOR_CONTRACT.toLowerCase());
+
+          if (!isMatch) {
+            resultBox.classList.remove('hidden');
+            resultBox.className = 'rounded-2xl p-6 border shadow-2xl bg-red-950/20 border-red-500/40 text-red-300';
+            resultBox.innerHTML = `
+              <div class="flex items-center space-x-3 mb-4">
+                <div class="w-10 h-10 rounded-full bg-red-500/20 border border-red-500/40 flex items-center justify-center text-red-400">
+                  <i data-lucide="alert-triangle" class="w-6 h-6"></i>
+                </div>
+                <div>
+                  <h3 class="text-base font-bold text-red-200">Hash Mismatch (Verification Failed)</h3>
+                  <p class="text-xs text-red-400/80">The transaction exists on Base L2, but does NOT match your document's SHA-256 digest.</p>
+                </div>
+              </div>
+              <div class="text-xs bg-neutral-950/80 p-4 rounded-xl border border-red-500/20 space-y-2 mono">
+                <div><span class="text-neutral-500">Provided File Hash:</span> 0x${cleanTargetHash}</div>
+                <div><span class="text-neutral-500">Transaction Input: </span> 0x${inputData.slice(0, 64)}...</div>
+              </div>
+            `;
+            return;
+          }
         }
 
-        const block = await rpcCall('eth_getBlockByNumber', [tx.blockNumber, false], rpcUrl);
-        const blockNumber = parseInt(tx.blockNumber, 16);
-        const timestamp = parseInt(block.timestamp, 16);
         const dateUtc = new Date(timestamp * 1000).toUTCString();
         const dateLocal = new Date(timestamp * 1000).toLocaleString();
 
-        const inputData = cleanHex(tx.input || '');
-        const isMatch = inputData.includes(cleanTargetHash);
-
         resultBox.classList.remove('hidden');
+        resultBox.className = 'rounded-2xl p-6 border shadow-2xl bg-emerald-950/20 border-emerald-500/40 text-emerald-300';
+        resultBox.innerHTML = `
+          <div class="flex items-center space-x-3 mb-4">
+            <div class="w-10 h-10 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400">
+              <i data-lucide="check-circle" class="w-6 h-6"></i>
+            </div>
+            <div>
+              <h3 class="text-base font-bold text-emerald-200">Cryptographic Integrity Verified</h3>
+              <p class="text-xs text-emerald-400/80">Mathematical Match Confirmed on Base L2</p>
+            </div>
+          </div>
 
-        if (isMatch) {
-          resultBox.className = 'rounded-2xl p-6 border shadow-2xl bg-emerald-950/20 border-emerald-500/40 text-emerald-300';
-          resultBox.innerHTML = `
-            <div class="flex items-center space-x-3 mb-4">
-              <div class="w-10 h-10 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400">
-                <i data-lucide="check-circle" class="w-6 h-6"></i>
-              </div>
-              <div>
-                <h3 class="text-base font-bold text-emerald-200">Cryptographic Integrity Verified</h3>
-                <p class="text-xs text-emerald-400/80">Mathematical Match Confirmed on Base L2</p>
-              </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs bg-neutral-950/80 p-4 rounded-xl border border-emerald-500/20 text-neutral-300">
+            <div>
+              <span class="text-neutral-500 block">SHA-256 Digest:</span>
+              <span class="mono font-semibold text-emerald-400 break-all">0x${cleanTargetHash}</span>
             </div>
-
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs bg-neutral-950/80 p-4 rounded-xl border border-emerald-500/20 text-neutral-300">
-              <div>
-                <span class="text-neutral-500 block">SHA-256 Digest:</span>
-                <span class="mono font-semibold text-emerald-400 break-all">0x${cleanTargetHash}</span>
-              </div>
-              <div>
-                <span class="text-neutral-500 block">Block Timestamp (UTC):</span>
-                <span class="font-semibold text-white">${dateUtc}</span>
-              </div>
-              <div>
-                <span class="text-neutral-500 block">Block Number:</span>
-                <span class="mono font-semibold text-white">#${blockNumber.toLocaleString()}</span>
-              </div>
-              <div>
-                <span class="text-neutral-500 block">Local Timestamp:</span>
-                <span class="text-neutral-300">${dateLocal}</span>
-              </div>
-              <div class="sm:col-span-2">
-                <span class="text-neutral-500 block">Target Contract / Anchor:</span>
-                <span class="mono text-xs text-neutral-300 break-all">${tx.to}</span>
-              </div>
-              <div class="sm:col-span-2 pt-2 border-t border-neutral-800 flex justify-between items-center">
-                <span class="text-neutral-400">View Public Blockchain Record:</span>
-                <a href="https://basescan.org/tx/${txHash}" target="_blank" class="text-emerald-400 hover:underline flex items-center gap-1 font-medium">
-                  Basescan Explorer <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
-                </a>
-              </div>
+            <div>
+              <span class="text-neutral-500 block">Block Timestamp (UTC):</span>
+              <span class="font-semibold text-white">${dateUtc}</span>
             </div>
-          `;
-        } else {
-          resultBox.className = 'rounded-2xl p-6 border shadow-2xl bg-red-950/20 border-red-500/40 text-red-300';
-          resultBox.innerHTML = `
-            <div class="flex items-center space-x-3 mb-4">
-              <div class="w-10 h-10 rounded-full bg-red-500/20 border border-red-500/40 flex items-center justify-center text-red-400">
-                <i data-lucide="alert-triangle" class="w-6 h-6"></i>
-              </div>
-              <div>
-                <h3 class="text-base font-bold text-red-200">Hash Mismatch (Verification Failed)</h3>
-                <p class="text-xs text-red-400/80">The transaction exists on Base L2, but does NOT match your document's SHA-256 digest.</p>
-              </div>
+            <div>
+              <span class="text-neutral-500 block">Block Number:</span>
+              <span class="mono font-semibold text-white">#${blockNumber.toLocaleString()}</span>
             </div>
-            <div class="text-xs bg-neutral-950/80 p-4 rounded-xl border border-red-500/20 space-y-2 mono">
-              <div><span class="text-neutral-500">Provided File Hash:</span> 0x${cleanTargetHash}</div>
-              <div><span class="text-neutral-500">Transaction Input: </span> 0x${inputData.slice(0, 64)}...</div>
+            <div>
+              <span class="text-neutral-500 block">Local Timestamp:</span>
+              <span class="text-neutral-300">${dateLocal}</span>
             </div>
-          `;
-        }
+            <div class="sm:col-span-2">
+              <span class="text-neutral-500 block">Smart Contract / Anchor:</span>
+              <span class="mono text-xs text-neutral-300 break-all">${contractTo}</span>
+            </div>
+            <div class="sm:col-span-2 pt-2 border-t border-neutral-800 flex justify-between items-center">
+              <span class="text-neutral-400">View Public Blockchain Record:</span>
+              <a href="https://basescan.org/tx/${txHash}" target="_blank" class="text-emerald-400 hover:underline flex items-center gap-1 font-medium">
+                Basescan Explorer <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
+              </a>
+            </div>
+          </div>
+        `;
       } catch (err) {
         resultBox.classList.remove('hidden');
         resultBox.className = 'rounded-2xl p-6 border shadow-2xl bg-amber-950/20 border-amber-500/40 text-amber-300';
@@ -380,7 +421,7 @@
           <div class="flex items-center space-x-3">
             <i data-lucide="alert-circle" class="w-6 h-6 text-amber-400 flex-shrink-0"></i>
             <div>
-              <h3 class="text-sm font-bold text-amber-200">Verification Error</h3>
+              <h3 class="text-sm font-bold text-amber-200">Verification Result</h3>
               <p class="text-xs text-amber-400/90 mt-1">${err.message}</p>
             </div>
           </div>

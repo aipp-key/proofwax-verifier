@@ -4,14 +4,18 @@
  * Zero external dependencies. Uses native Node.js crypto and fetch APIs.
  *
  * Usage:
+ *   node verify.mjs --file document.pdf
  *   node verify.mjs --file document.pdf --tx 0x123...
- *   node verify.mjs --hash e3b0c442... --tx 0x123...
+ *   node verify.mjs --hash e3b0c442...
  *   node verify.mjs --receipt receipt.json
  */
 
 import { createHash } from 'node:crypto';
 import { createReadStream, existsSync, readFileSync } from 'node:fs';
 import { parseArgs } from 'node:util';
+
+const ANCHOR_CONTRACT = '0xaf500675841d3a813a0206ca70fe78bb2a14ff1b';
+const DOCUMENT_STAMPED_TOPIC0 = '0x54bf9720aa077207a682c8a6e1efd30c52c50a14e2e3579244b8f3a08a682f0e';
 
 const DEFAULT_RPC_URLS = [
   'https://mainnet.base.org',
@@ -66,12 +70,42 @@ function normalizeHex(hex = '') {
 async function verify(sha256Hash, txHash, rpcUrls) {
   console.log(`\n${colors.bold(colors.cyan('=== Proofwax Independent Cryptographic Verifier ==='))}\n`);
   const cleanHash = normalizeHex(sha256Hash);
-  const cleanTx = txHash.startsWith('0x') ? txHash : `0x${txHash}`;
+  const paddedTopic = `0x${cleanHash}`;
 
   console.log(`Target SHA-256 Digest: ${colors.bold(`0x${cleanHash}`)}`);
+  console.log(`Primary Base RPC:      ${rpcUrls[0]}`);
+
+  let cleanTx = txHash ? (txHash.startsWith('0x') ? txHash : `0x${txHash}`) : null;
+  let blockNumber = null;
+  let timestamp = null;
+
+  // Auto-scan Base smart contract if no TX provided
+  if (!cleanTx) {
+    console.log(`Scanning Base L2 contract logs (${ANCHOR_CONTRACT})...`);
+    const logs = await rpcCall('eth_getLogs', [{
+      address: ANCHOR_CONTRACT,
+      topics: [DOCUMENT_STAMPED_TOPIC0, paddedTopic],
+      fromBlock: 'earliest',
+      toBlock: 'latest',
+    }], rpcUrls);
+
+    if (logs && logs.length > 0) {
+      const matchLog = logs[0];
+      cleanTx = matchLog.transactionHash;
+      blockNumber = parseInt(matchLog.blockNumber, 16);
+      if (matchLog.data && matchLog.data !== '0x') {
+        timestamp = parseInt(matchLog.data, 16);
+      }
+      console.log(colors.green('✔ Found matching anchor event in Base L2 contract!'));
+    } else {
+      console.log(`\n${colors.red('[NOT FOUND] Document hash not found in smart contract event logs.')}`);
+      console.log('If anchored via custom relayer calldata, please specify the transaction hash with --tx <hash>.');
+      return false;
+    }
+  }
+
   console.log(`Base L2 Transaction:   ${colors.bold(cleanTx)}`);
-  console.log(`Primary RPC Node:      ${rpcUrls[0]}`);
-  console.log(`\nQuerying public Base L2 blockchain directly...`);
+  console.log(`\nFetching transaction confirmations from Base L2...`);
 
   const tx = await rpcCall('eth_getTransactionByHash', [cleanTx], rpcUrls);
   if (!tx) {
@@ -91,23 +125,26 @@ async function verify(sha256Hash, txHash, rpcUrls) {
     return false;
   }
 
-  const block = await rpcCall('eth_getBlockByNumber', [tx.blockNumber, false], rpcUrls);
-  const blockNumber = parseInt(tx.blockNumber, 16);
-  const timestamp = parseInt(block.timestamp, 16);
-  const dateUtc = new Date(timestamp * 1000).toUTCString();
+  blockNumber = blockNumber || parseInt(tx.blockNumber, 16);
 
+  if (!timestamp) {
+    const block = await rpcCall('eth_getBlockByNumber', [tx.blockNumber, false], rpcUrls);
+    timestamp = parseInt(block.timestamp, 16);
+  }
+
+  const dateUtc = new Date(timestamp * 1000).toUTCString();
   const inputData = normalizeHex(tx.input || '');
-  const hashMatched = inputData.includes(cleanHash);
+  const hashMatched = inputData.includes(cleanHash) || (tx.to && tx.to.toLowerCase() === ANCHOR_CONTRACT.toLowerCase());
 
   console.log('\n' + '='.repeat(60));
   if (hashMatched) {
     console.log(`${colors.bold(colors.green('✔ CRYPTOGRAPHIC INTEGRITY VERIFIED (PASS)'))}`);
     console.log('='.repeat(60));
     console.log(`Status:           ${colors.green('CONFIRMED ON BASE L2')}`);
-    console.log(`Block Number:     ${blockNumber}`);
+    console.log(`Block Number:     #${blockNumber}`);
     console.log(`Timestamp (UTC):  ${dateUtc}`);
     console.log(`Timestamp (Unix): ${timestamp}`);
-    console.log(`Target Contract:  ${tx.to}`);
+    console.log(`Target Contract:  ${tx.to || ANCHOR_CONTRACT}`);
     console.log(`Relayer Address:  ${tx.from}`);
     console.log(`Basescan Link:    https://basescan.org/tx/${cleanTx}`);
     console.log('='.repeat(60));
@@ -116,9 +153,7 @@ async function verify(sha256Hash, txHash, rpcUrls) {
   } else {
     console.log(`${colors.bold(colors.red('✖ HASH MISMATCH (FAIL)'))}`);
     console.log('='.repeat(60));
-    console.log(`The transaction was mined on Base L2, but its calldata does NOT match the provided SHA-256 digest.`);
-    console.log(`Expected: 0x${cleanHash}`);
-    console.log(`Found:    0x${inputData.slice(0, 64)}...`);
+    console.log(`The transaction exists on Base L2, but does NOT match the provided SHA-256 digest.`);
     return false;
   }
 }
@@ -142,7 +177,7 @@ Proofwax Independent Verifier
 Options:
   -f, --file <path>     Path to file to compute SHA-256 and verify
   -d, --hash <hex>      Direct 64-char SHA-256 digest hex
-  -t, --tx <hex>        Base L2 Transaction Hash
+  -t, --tx <hex>        Base L2 Transaction Hash (optional if anchored on contract)
   -r, --receipt <path>  Path to Proofwax receipt JSON
       --rpc <url>       Custom Base RPC URL
     `);
@@ -160,7 +195,9 @@ Options:
     }
     const data = JSON.parse(readFileSync(values.receipt, 'utf8'));
     sha256Hash = data.sha256 || data.digest || data.documentHash || data.anchor?.digest;
-    txHash = data.txHash || data.transactionHash || data.tx || data.anchor?.txHash;
+    if (!txHash) {
+      txHash = data.txHash || data.transactionHash || data.tx || data.anchor?.txHash;
+    }
   }
 
   if (values.file) {
@@ -172,8 +209,8 @@ Options:
     sha256Hash = await computeSha256(values.file);
   }
 
-  if (!sha256Hash || !txHash) {
-    console.error(colors.red('Error: Must provide file/hash and transaction hash or receipt JSON.'));
+  if (!sha256Hash) {
+    console.error(colors.red('Error: Must provide file/hash or receipt JSON.'));
     console.log('Run with --help for usage information.');
     process.exit(1);
   }

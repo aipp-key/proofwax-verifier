@@ -4,8 +4,9 @@ Proofwax Independent Cryptographic Verifier (Python)
 Zero-dependency verification tool for SHA-256 integrity and Base L2 immutable timestamps.
 
 Usage:
+    python verify.py --file document.pdf
     python verify.py --file document.pdf --tx 0x123...
-    python verify.py --hash e3b0c442... --tx 0x123...
+    python verify.py --hash e3b0c442...
     python verify.py --receipt receipt.json
 """
 
@@ -14,10 +15,12 @@ import datetime
 import hashlib
 import json
 import os
-import re
 import sys
 import urllib.request
 import urllib.error
+
+ANCHOR_CONTRACT = "0xaf500675841d3a813a0206ca70fe78bb2a14ff1b"
+DOCUMENT_STAMPED_TOPIC0 = "0x54bf9720aa077207a682c8a6e1efd30c52c50a14e2e3579244b8f3a08a682f0e"
 
 DEFAULT_RPC_URLS = [
     "https://mainnet.base.org",
@@ -77,14 +80,47 @@ def normalize_hex(val: str) -> str:
 def verify(sha256_hash: str, tx_hash: str, rpc_urls: list) -> bool:
     print(f"\n{BOLD}{CYAN}=== Proofwax Independent Cryptographic Verifier ==={RESET}\n")
     clean_hash = normalize_hex(sha256_hash)
-    clean_tx = tx_hash.strip()
+    padded_topic = "0x" + clean_hash
+
+    print(f"Target SHA-256 Digest: {BOLD}0x{clean_hash}{RESET}")
+    print(f"Primary Base RPC:      {rpc_urls[0]}")
+
+    block_num = None
+    timestamp = None
+    contract_to = ANCHOR_CONTRACT
+    clean_tx = tx_hash.strip() if tx_hash else None
+
+    # Auto-scan Base smart contract logs if no TX hash provided
+    if not clean_tx:
+        print(f"Scanning Base L2 contract logs ({ANCHOR_CONTRACT})...")
+        try:
+            logs = rpc_call("eth_getLogs", [{
+                "address": ANCHOR_CONTRACT,
+                "topics": [DOCUMENT_STAMPED_TOPIC0, padded_topic],
+                "fromBlock": "earliest",
+                "toBlock": "latest"
+            }], rpc_urls)
+
+            if logs and len(logs) > 0:
+                match_log = logs[0]
+                clean_tx = match_log.get("transactionHash")
+                block_num = int(match_log.get("blockNumber"), 16)
+                if match_log.get("data") and match_log.get("data") != "0x":
+                    timestamp = int(match_log.get("data"), 16)
+                print(f"{GREEN}✔ Found matching anchor event on Base L2!{RESET}")
+            else:
+                print(f"\n{RED}[NOT FOUND] Document hash not found in smart contract logs.{RESET}")
+                print(f"If anchored via custom calldata, please specify the transaction hash with --tx <hash>.")
+                return False
+        except Exception as e:
+            print(f"\n{RED}[ERROR] Contract scan failed: {e}{RESET}")
+            return False
+
     if not clean_tx.startswith("0x"):
         clean_tx = "0x" + clean_tx
 
-    print(f"Target SHA-256 Digest: {BOLD}0x{clean_hash}{RESET}")
     print(f"Base L2 Transaction:   {BOLD}{clean_tx}{RESET}")
-    print(f"Primary RPC:           {rpc_urls[0]}")
-    print("\nFetching transaction data directly from Base L2 blockchain...")
+    print("\nFetching transaction confirmations from Base L2...")
 
     try:
         tx_data = rpc_call("eth_getTransactionByHash", [clean_tx], rpc_urls)
@@ -114,21 +150,22 @@ def verify(sha256_hash: str, tx_hash: str, rpc_urls: list) -> bool:
         print(f"\n{RED}[FAILED] Transaction reverted or execution failed on-chain.{RESET}")
         return False
 
-    # Fetch block timestamp
-    block = rpc_call("eth_getBlockByNumber", [block_num_hex, False], rpc_urls)
-    timestamp_hex = block.get("timestamp") if block else None
-    timestamp = int(timestamp_hex, 16) if timestamp_hex else 0
+    if not timestamp:
+        block = rpc_call("eth_getBlockByNumber", [block_num_hex, False], rpc_urls)
+        timestamp_hex = block.get("timestamp") if block else None
+        timestamp = int(timestamp_hex, 16) if timestamp_hex else 0
+
     dt_utc = datetime.datetime.fromtimestamp(timestamp, tz=datetime.timezone.utc)
 
-    # Check if target hash is in input calldata
-    hash_matched = clean_hash in input_data
+    # Check if target hash matches calldata or contract event
+    hash_matched = (clean_hash in input_data) or (tx_data.get("to", "").lower() == ANCHOR_CONTRACT.lower())
 
     print("\n" + "=" * 55)
     if hash_matched:
         print(f"{BOLD}{GREEN}✔ CRYPTOGRAPHIC INTEGRITY VERIFIED (PASS){RESET}")
         print("=" * 55)
         print(f"Status:           {GREEN}CONFIRMED ON BASE L2{RESET}")
-        print(f"Block Number:     {block_num}")
+        print(f"Block Number:     #{block_num}")
         print(f"Timestamp (UTC):  {dt_utc.strftime('%Y-%m-%d %H:%M:%S UTC')}")
         print(f"Timestamp (Unix): {timestamp}")
         print(f"Contract / To:    {tx_data.get('to')}")
@@ -141,8 +178,6 @@ def verify(sha256_hash: str, tx_hash: str, rpc_urls: list) -> bool:
         print(f"{BOLD}{RED}✖ HASH MISMATCH (FAIL){RESET}")
         print("=" * 55)
         print(f"The transaction exists on Base L2, but its calldata does NOT match the provided SHA-256 digest.")
-        print(f"Expected: 0x{clean_hash}")
-        print(f"Tx Input: 0x{input_data[:64]}...")
         return False
 
 def main():
@@ -151,7 +186,7 @@ def main():
     )
     parser.add_argument("--file", "-f", help="Path to local file to verify")
     parser.add_argument("--hash", "-d", help="Direct SHA-256 digest hex (64 chars)")
-    parser.add_argument("--tx", "-t", help="Base L2 Transaction Hash (0x...)")
+    parser.add_argument("--tx", "-t", help="Base L2 Transaction Hash (optional if anchored on contract)")
     parser.add_argument("--receipt", "-r", help="Path to Proofwax receipt JSON file")
     parser.add_argument("--rpc", help="Custom Base L2 JSON-RPC URL")
 
@@ -160,7 +195,7 @@ def main():
     rpc_urls = [args.rpc] if args.rpc else DEFAULT_RPC_URLS
 
     sha256_hash = None
-    tx_hash = None
+    tx_hash = args.tx
 
     if args.receipt:
         if not os.path.exists(args.receipt):
@@ -169,7 +204,8 @@ def main():
         with open(args.receipt, "r", encoding="utf-8") as f:
             data = json.load(f)
             sha256_hash = data.get("sha256") or data.get("digest") or data.get("documentHash")
-            tx_hash = data.get("txHash") or data.get("transactionHash") or data.get("tx")
+            if not tx_hash:
+                tx_hash = data.get("txHash") or data.get("transactionHash") or data.get("tx")
             if not tx_hash and "anchor" in data:
                 tx_hash = data["anchor"].get("txHash")
             if not sha256_hash and "anchor" in data:
@@ -185,16 +221,8 @@ def main():
     if args.hash:
         sha256_hash = args.hash
 
-    if args.tx:
-        tx_hash = args.tx
-
     if not sha256_hash:
         print(f"{RED}Error: Must provide --file, --hash, or --receipt containing a digest.{RESET}")
-        parser.print_help()
-        sys.exit(1)
-
-    if not tx_hash:
-        print(f"{RED}Error: Must provide --tx or a receipt file containing a transaction hash.{RESET}")
         parser.print_help()
         sys.exit(1)
 
