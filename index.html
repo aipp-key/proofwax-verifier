@@ -70,11 +70,11 @@
       </p>
     </div>
 
-    <!-- Step 1: File / Hash Input -->
+    <!-- Step 1: File / Receipt / Hash Input -->
     <div class="bg-neutral-900/60 border border-neutral-800 rounded-2xl p-6 mb-6 shadow-xl backdrop-blur-sm">
       <h2 class="text-sm font-semibold uppercase tracking-wider text-neutral-400 mb-4 flex items-center gap-2">
         <span class="w-5 h-5 rounded-full bg-neutral-800 text-neutral-300 text-xs flex items-center justify-center font-bold">1</span>
-        Document Integrity (SHA-256)
+        Document Integrity (SHA-256) or Receipt JSON
       </h2>
 
       <div id="drop-zone" class="border-2 border-dashed border-neutral-800 hover:border-emerald-500/50 transition rounded-xl p-8 text-center cursor-pointer bg-neutral-950/40 group">
@@ -83,14 +83,14 @@
           <i data-lucide="upload-cloud" class="w-6 h-6"></i>
         </div>
         <p class="text-sm font-medium text-neutral-200">
-          Drop your document here or <span class="text-emerald-400 underline decoration-emerald-500/30">browse file</span>
+          Drop your document or <span class="text-emerald-400 font-semibold">receipt JSON</span> here or <span class="text-emerald-400 underline decoration-emerald-500/30">browse</span>
         </p>
         <p class="text-xs text-neutral-500 mt-1">Calculated locally in your browser (never uploaded anywhere)</p>
       </div>
 
       <div id="file-info" class="hidden mt-4 p-3.5 bg-neutral-950 rounded-xl border border-neutral-800/80 flex items-center justify-between">
         <div class="flex items-center space-x-3 overflow-hidden">
-          <i data-lucide="file-text" class="w-5 h-5 text-emerald-400 flex-shrink-0"></i>
+          <i data-lucide="file-check" class="w-5 h-5 text-emerald-400 flex-shrink-0"></i>
           <div class="overflow-hidden">
             <p id="file-name" class="text-sm font-medium text-white truncate"></p>
             <p id="file-size" class="text-xs text-neutral-500"></p>
@@ -102,7 +102,7 @@
       </div>
 
       <div class="mt-4">
-        <label class="block text-xs font-medium text-neutral-400 mb-1.5">Or enter SHA-256 Digest Manually:</label>
+        <label class="block text-xs font-medium text-neutral-400 mb-1.5">SHA-256 Digest (Calculated or Entered):</label>
         <div class="relative">
           <input type="text" id="hash-input" placeholder="0x... or 64 hex characters" class="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-4 py-2.5 text-xs text-neutral-200 mono focus:outline-none focus:border-emerald-500/50 transition">
         </div>
@@ -113,7 +113,7 @@
     <div class="bg-neutral-900/60 border border-neutral-800 rounded-2xl p-6 mb-6 shadow-xl backdrop-blur-sm">
       <h2 class="text-sm font-semibold uppercase tracking-wider text-neutral-400 mb-4 flex items-center gap-2">
         <span class="w-5 h-5 rounded-full bg-neutral-800 text-neutral-300 text-xs flex items-center justify-center font-bold">2</span>
-        Base L2 Transaction / Receipt
+        Base L2 Transaction Proof
       </h2>
 
       <div class="space-y-4">
@@ -123,7 +123,7 @@
         </div>
 
         <div>
-          <label class="block text-xs font-medium text-neutral-400 mb-1.5">Base Public RPC Endpoint:</label>
+          <label class="block text-xs font-medium text-neutral-400 mb-1.5">Base Public RPC Node:</label>
           <select id="rpc-select" class="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-4 py-2.5 text-xs text-neutral-300 focus:outline-none focus:border-emerald-500/50 transition">
             <option value="https://mainnet.base.org">https://mainnet.base.org (Official Base RPC)</option>
             <option value="https://base-rpc.publicnode.com">https://base-rpc.publicnode.com (PublicNode)</option>
@@ -135,7 +135,7 @@
 
     <!-- Action Button -->
     <div class="mb-8 text-center">
-      <button id="verify-btn" class="bg-emerald-500 hover:bg-emerald-400 active:scale-[0.98] transition font-semibold text-neutral-950 px-8 py-3 rounded-xl text-sm inline-flex items-center gap-2 shadow-lg shadow-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed">
+      <button id="verify-btn" class="bg-emerald-500 hover:bg-emerald-400 active:scale-[0.98] transition font-semibold text-neutral-950 px-8 py-3 rounded-xl text-sm inline-flex items-center gap-2 shadow-lg shadow-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer">
         <i data-lucide="shield" class="w-4 h-4"></i>
         Verify On-Chain Cryptographic Integrity
       </button>
@@ -188,8 +188,6 @@
     const verifyBtn = document.getElementById('verify-btn');
     const resultBox = document.getElementById('result-box');
 
-    let currentFileBuffer = null;
-
     dropZone.addEventListener('click', () => fileInput.click());
     fileInput.addEventListener('change', (e) => {
       if (e.target.files.length) handleFile(e.target.files[0]);
@@ -212,7 +210,6 @@
 
     clearFileBtn.addEventListener('click', () => {
       fileInput.value = '';
-      currentFileBuffer = null;
       fileInfo.classList.add('hidden');
       dropZone.classList.remove('hidden');
       hashInput.value = '';
@@ -224,11 +221,32 @@
       fileInfo.classList.remove('hidden');
       dropZone.classList.add('hidden');
 
+      // Check if dropped file is a Proofwax receipt JSON
+      if (file.name.endsWith('.json')) {
+        try {
+          const text = await file.text();
+          const data = JSON.parse(text);
+          const foundHash = data.sha256 || data.digest || data.documentHash || data.anchor?.digest;
+          const foundTx = data.txHash || data.transactionHash || data.tx || data.anchor?.txHash;
+
+          if (foundHash || foundTx) {
+            if (foundHash) hashInput.value = foundHash;
+            if (foundTx) txInput.value = foundTx;
+            lucide.createIcons();
+            return;
+          }
+        } catch (e) {
+          // Fallback to normal hashing
+        }
+      }
+
+      // Compute local SHA-256
       const arrayBuffer = await file.arrayBuffer();
       const hashBuffer = await crypto.subtle.digest('SHA-256', arrayBuffer);
       const hashArray = Array.from(new Uint8Array(hashBuffer));
       const hashHex = '0x' + hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
       hashInput.value = hashHex;
+      lucide.createIcons();
     }
 
     async function rpcCall(method, params, rpcUrl) {
